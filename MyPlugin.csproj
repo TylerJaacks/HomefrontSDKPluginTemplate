@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A HomefrontSDK mod for the Homefront dedicated server. It runs as
+       Homefront Dedicated Server\Binaries\HomefrontSDK\Mods\MyPlugin\MyPlugin.dll. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PlatformTarget>x86</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Version>0.1.0</Version>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- The SDK: the HomefrontSDK checkout beside this one when there is one, else (CI) the latest stable package from
+       GitHub Packages (see nuget.config). -p:UseLocalSdk=false forces the package, -p:HomefrontSDKVersion=0.2.0 pins
+       it. Either way the game already has the SDK loaded: reference it, don't copy it. -->
+  <PropertyGroup>
+    <UseLocalSdk Condition="'$(UseLocalSdk)' == '' and Exists('..\HomefrontSDK\SDK\HomefrontSDK.csproj')">true</UseLocalSdk>
+    <HomefrontSDKVersion Condition="'$(HomefrontSDKVersion)' == ''">*</HomefrontSDKVersion>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseLocalSdk)' != 'true'">
+    <PackageReference Include="HomefrontSDK" Version="$(HomefrontSDKVersion)" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalSdk)' == 'true'">
+    <ProjectReference Include="..\HomefrontSDK\SDK\HomefrontSDK.csproj" Private="false" />
+  </ItemGroup>
+
+  <!-- Install after every build when the server has the SDK installed: the dedicated server beside this checkout, or
+       -p:HomefrontBinaries=<server>\Binaries. -p:InstallMod=false skips it. Mods are loaded from bytes, so this works
+       while the server runs; "!sdk reload MyPlugin" then loads the new build. -->
+  <PropertyGroup>
+    <HomefrontBinaries Condition="'$(HomefrontBinaries)' == ''">$(MSBuildThisFileDirectory)..\Homefront Dedicated Server\Binaries</HomefrontBinaries>
+    <ModInstallDir>$(HomefrontBinaries)\HomefrontSDK\Mods\$(MSBuildProjectName)</ModInstallDir>
+  </PropertyGroup>
+
+  <Target Name="InstallMod" AfterTargets="Build"
+          Condition="'$(InstallMod)' != 'false' and Exists('$(HomefrontBinaries)\HomefrontSDK\HomefrontSDK.dll')">
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(ModInstallDir)" SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="$(MSBuildProjectName) -> $(ModInstallDir)" />
+  </Target>
+
+</Project>
