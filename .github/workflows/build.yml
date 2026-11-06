@@ -47,7 +47,10 @@ jobs:
       run: |
         $sdk = (dotnet list "$env:MOD.csproj" package --format json | ConvertFrom-Json).projects[0].frameworks[0].topLevelPackages |
           Where-Object id -eq HomefrontSDK | ForEach-Object resolvedVersion
-        $notes = "Needs [HomefrontSDK v$sdk](https://github.com/TylerJaacks/HomefrontSDK/releases/tag/v$sdk) and " +
+        # NuGet normalizes the version (tag v1.0 -> 1.0.0): link the SDK release whose tag exists.
+        $tag = ("v$sdk", "v$($sdk -replace '\.0$')" | Where-Object { gh release view $_ -R TylerJaacks/HomefrontSDK *> $null; $? } |
+          Select-Object -First 1) ?? "v$sdk"
+        $notes = "Needs [HomefrontSDK $tag](https://github.com/TylerJaacks/HomefrontSDK/releases/tag/$tag) and " +
                  "[HomefrontModLoader](https://github.com/TylerJaacks/HomefrontModLoader/releases). " +
                  "Install as ``Homefront Dedicated Server\Binaries\HomefrontSDK\Mods\$env:MOD\$env:MOD.dll``."
         gh release create $env:GITHUB_REF_NAME "bin/Release/net10.0/$env:MOD.dll" "bin/Release/net10.0/$env:MOD.pdb" `
